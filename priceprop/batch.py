@@ -121,9 +121,12 @@ def calibrate_tim2_day(r, eps, maxlag=180, norm='corr'):
     Sln     = scorr.xcorr(r, eps_pc_full,  norm=norm)
     Slc     = scorr.xcorr(r, eps_npc_full, norm=norm)
 
-    return propagator.calibrate_tim2(
+    g, meta = prop.calibrate_tim2(
         nncorr, cccorr, cncorr, ncncorr, Sln, Slc, maxlag=maxlag
     )
+    G_pc  = g[:maxlag]
+    G_npc = g[maxlag:]
+    return G_pc, G_npc, meta
 
 
 # Analyse Trades
