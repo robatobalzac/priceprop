@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ py3-port ]
+    branches: [py3-port]   # or - py3-port
   pull_request:
 
 jobs:
@@ -11,9 +11,19 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.9", "3.10", "3.11"]
+
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: {python-version: ${{ matrix.python-version }}}
-      - run: pip install -e ".[dev]"
-      - run: pytest -q
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install test deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e '.[dev]'      # pulls pytest + tox (from setup.py extras)
+
+      - name: Run pytest
+        run: python -m pytest -q
