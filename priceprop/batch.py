@@ -12,7 +12,15 @@ def complete_data_columns(
         tt,
         split_dates=True
     ):
-    """Fill in columns necessary for models"""
+    """
+    Fill in columns necessary for models
+    
+    Args:
+        tt: pandas.DataFrame
+            The trades DataFrame
+        split_dates: bool
+            Whether to split trades into two samples based on date
+    """
     
     if not 'sc' in tt:
         tt['sc'] = tt['sign'] * tt['change']
@@ -31,7 +39,18 @@ def complete_data_columns(
 
 
 def get_trade_split(tt, split_by):
-    "Get dict of sample key-mask pairs for splitting trades into groups."
+    """
+    Get dict of sample key-mask pairs for splitting trades into groups.
+    
+    Args:
+        tt: pandas.DataFrame
+            The trades DataFrame
+        split_by: str
+            The column to split trades by
+    Returns:
+        dict
+            A dictionary with sample keys and mask values
+    """
     if split_by:
             samples = tt[split_by].unique()
             masks   = {m: (tt[split_by] == m) for m in samples}
@@ -41,10 +60,19 @@ def get_trade_split(tt, split_by):
     return masks
     
 def shift(x, n, val=np.nan):
-    """Shift array, pad with fixed value.
+    """
+    Shift array, pad with fixed value.
     
     Example: Convert r_1 = p(t+1) - p(t) to causal return p(t) - p(t-1)
              without losing timesteps with pad(r_1, 1).
+    Args:
+        x: array-like
+            The array to shift
+        n: int
+            The number of steps to shift
+        val: float
+            The value to pad with
+    Returns:
     """
     
     if n == 0:
@@ -68,9 +96,23 @@ def calibrate_models(
         group=False,
         models = ['cim','tim1','tim2','hdim2','hdim2_x2']
     ):
-    """Return dict with correlations, kernels, and responses.
+    """
+    Return dict with correlations, kernels, and responses.
     Calculate sign & price change correlations, response functions, 
     and fitted propagator kernels for trades in DataFrame.
+    
+    Args:
+        tt: pandas.DataFrame
+            The trades DataFrame
+        nfft: str
+            The nfft to calculate the response of
+        group: bool
+            Whether to group trades by date
+        models: list
+            The models to calibrate
+    Returns:
+        dict
+            A dictionary with the results
     """
     
     # store results
@@ -245,11 +287,33 @@ def calc_models(
         models            = ['cim','tim1','tim2','hdim2','hdim2_x2'],
         smooth_kernel     = True
     ):
-    """Add propagator(-like) models to trades.  
+    """
+    Add propagator(-like) models to trades.  
     
     Pass a dict: calibration is added to dict, not returned.
     Pass trades DataFrame directly: calibration is returned as DataFrame(s)
     
+    Args:
+        dbc: dict
+            A dictionary with the trades DataFrame
+        nfft: str
+            The nfft to calculate the response of
+        group: bool
+            Whether to group trades by date 
+        calibrate: bool
+            Whether to calibrate the models
+        split_by: str
+            The column to split trades by
+        rshift: int
+            The number of steps to shift the return
+        models: list
+            The models to run
+        smooth_kernel: bool
+            Whether to smooth the kernel
+    Returns:
+        dict
+            A dictionary with the results
+            
     See also: calibrate_models, aggregate_impact.add_models_to_trades
     """
     # normalise inputs (dict / df)
