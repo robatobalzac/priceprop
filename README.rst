@@ -51,7 +51,7 @@ Installation
 Dependencies (automatically installed)
 --------------------------------------
 
-    - Python 2.7
+    - Python 3.8+
     - NumPy
     - SciPy
     - Pandas
