@@ -107,7 +107,7 @@ class TestHDIM2(unittest.TestCase):
             lpars = {
                 k: np.array(v) if hasattr(v, '__len__') 
                 else v 
-                for k,v in json.load(f).iteritems()
+                for k,v in json.load(f).items()
             }
         kn_est, kc_est = prop.calibrate_hdim2(
             lpars['Cnnc'], 

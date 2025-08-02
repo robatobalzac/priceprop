@@ -9,12 +9,35 @@ from scorr import xcorr, xcorr_grouped_df, xcorrshift, fftcrop, corr_mat
 # =====================================================================
 
 def integrate(x):
-    "Return lag 1 sum, i.e. price from return, or an integrated kernel."
+    """
+    Return lag 1 sum, i.e. price from return, or an integrated kernel.
+    
+    Args:
+        x: array-like
+            The signal to integrate
+    Returns:
+        array-like
+            The integrated signal
+    
+    """
     return np.concatenate([[0], np.cumsum(x[:-1])])
     
     
 def smooth_tail_rbf(k, l0=3, tau=5, smooth=1, epsilon=1):
-    """Smooth tail of array k with radial basis functions"""
+    """
+    Smooth tail of array k with radial basis functions
+    
+    Args:
+        k: array-like
+            The array to smooth
+        l0: int
+            The lag at which to start the interpolation
+        tau: int
+            The time constant for the exponential decay
+    Returns:
+        array-like
+            The smoothed signal
+    """
     # interpolate in log-lags
     l = np.log(np.arange(l0,len(k)))
     # estimate functions
@@ -33,6 +56,17 @@ def smooth_tail_rbf(k, l0=3, tau=5, smooth=1, epsilon=1):
 def propagate(s, G, sfunc=np.sign):
     """Simulate propagator model from signs and one kernel.
     Equivalent to tim1, one of the kernels in tim2 or hdim2.
+    
+    Args:
+        s: array-like
+            The signs to propagate
+        G: array-like
+            The kernel to propagate with
+        sfunc: function
+            The function to apply to the signs. Default: np.sign
+    Returns:
+        array-like
+            The propagated signal
     """
     steps = len(s)
     s  = sfunc(s[:len(s)])
@@ -43,7 +77,21 @@ def propagate(s, G, sfunc=np.sign):
 # =====================================================================
 
 def _return_response(ret, x, maxlag):
-    """Helper for response and response_grouped_df."""
+    """
+    Helper for response and response_grouped_df.
+    
+    Args:
+        ret: str
+            'l' for lags, 's' for differential response, 'r' for return response
+        x: array-like
+            The signal to calculate the response of
+        maxlag: int
+            The maximum lag to calculate the response of
+    Returns:
+        tuple
+            The lag, differential response, and response
+    """
+    maxlag = int(maxlag)
     # return what?
     ret = ret.lower()
     res = []
@@ -76,20 +124,21 @@ def response(r, s, maxlag=10**4, ret='lsr', subtract_mean=False):
     Note that this commonly used price response is a simple cross correlation 
     and NOT equivalent to the linear response in systems analysis.
     
-    Parameters:
-    ===========
-    
-    r: array-like
-        Returns
-    s: array-like
-        Order signs
-    maxlag: int
-        Longest lag to calculate
-    ret: str
-        can include 'l' to return lags, 'r' to return response, and
-        's' to return differential response (in specified order).
-    subtract_mean: bool
-        Subtract means first. Default: False (signal means already zero)
+    Args:
+        r: array-like
+            Returns
+        s: array-like
+            Order signs
+        maxlag: int
+            Longest lag to calculate
+        ret: str
+            can include 'l' to return lags, 'r' to return response, and
+            's' to return differential response (in specified order).
+        subtract_mean: bool
+            Subtract means first. Default: False (signal means already zero)
+    Returns:
+        tuple
+            The lag, differential response, and response
     """
     maxlag = min(maxlag, len(r) - 2)
     s  = s[:len(r)]
@@ -106,19 +155,20 @@ def response_grouped_df(
     Note that this commonly used price response is a simple cross correlation 
     and NOT equivalent to the linear response in systems analysis.
     
-    Parameters
-    ==========
-    
-    df: pandas.DataFrame
-        Dataframe containing order signs and returns
-    cols: tuple
-        The columns of interest
-    nfft:
-        Length of the fft segments
-    ret: str
-        What to return ('l': lags, 'r': response, 's': incremental response).
-    subtract_mean: bool
-        Subtract means first. Default: False (signal means already zero)
+    Args:
+        df: pandas.DataFrame
+            The dataframe to calculate the response of
+        cols: list
+            The columns to calculate the response of
+        nfft: str
+            The nfft to calculate the response of
+        ret: str
+            What to return ('l': lags, 'r': response, 's': incremental response).
+        subtract_mean: bool
+            Subtract means first. Default: False (signal means already zero)
+    Returns:
+        tuple
+            The lag, differential response, and response
     
     See also response, spectral.xcorr_grouped_df for more explanations
     """
@@ -143,21 +193,51 @@ def response_grouped_df(
 # =====================================================================
 
 def beta_from_gamma(gamma):
-    """Return exponent beta for the (integrated) propagator decay 
+    """
+    Return exponent beta for the (integrated) propagator decay 
         G(lag) = lag**-beta 
     that compensates a sign-autocorrelation 
         C(lag) = lag**-gamma.
+    
+    Args:
+        gamma: float
+            The exponent of the sign-autocorrelation
+    Returns:
+        float
+            The exponent beta
     """
     return (1-gamma)/2.
     
 def G_pow(steps, beta):
-    """Return power-law Propagator kernel G(l). l=0...steps"""
+    """
+    Return power-law Propagator kernel G(l). l=0...steps
+    
+    Args:
+        steps: int
+            The number of steps
+        beta: float
+            The exponent of the propagator decay
+    Returns:
+        array-like
+            The propagator kernel
+    """
     G = np.arange(1,steps)**-beta#+1
     G = np.r_[0, G]
     return G
     
 def k_pow(steps, beta):
-    """Return increment of power-law propagator kernel g. l=0...steps"""
+    """
+    Return increment of power-law propagator kernel g. l=0...steps
+    
+    Args:
+        steps: int
+            The number of steps
+        beta: float
+            The exponent of the propagator decay
+    Returns:
+        array-like
+            The propagator kernel
+    """
     return np.diff(G_pow(steps, beta))
     
 # TIM1 specific 
@@ -166,10 +246,8 @@ def k_pow(steps, beta):
 def calibrate_tim1(c, Sl, maxlag=10**4):
     """Return empirical estimate TIM1 kernel
     
-    Parameters:
-    ===========
-    
-    c: array-like
+    Args:
+        c: array-like
         Cross-correlation (covariance).
     Sl: array-like
         Price-response. If the response is differential, so is the returned
@@ -190,10 +268,8 @@ def tim1(s, G, sfunc=np.sign):
     and the 1 step ahead return p(t+1)-p(t) for the differential kernel 
     g, where G == numpy.cumsum(g).
     
-    Parameters:
-    ===========
-    
-    s: array-like
+    Args:
+        s: array-like
         Order signs
     G: array-like
         Kernel
@@ -212,24 +288,25 @@ def calibrate_tim2(
     Return empirical estimate for both kernels of the TIM2.
     (Transient Impact Model with two propagators)
     
-    Parameters:
-    ===========
-    
-    nncorr: array-like
-        Cross-covariance between non-price-changing (n-) orders.
-    cccorr: array-like
-        Cross-covariance between price-changing (c-) orders.
-    cncorr: array-like
-        Cross-covariance between c- and n-orders
-    nccorr: array-like
-        Cross-covariance between n- and c-orders.
-    Sln: array-like
-        (incremental) price response for n-orders
-    Slc: array-like
-        (incremental) price response for c-orders
-    maxlag: int
-        Length of the kernels.
-    
+    Args:
+        nncorr: array-like
+            Cross-correlation matrix for non-price-changing trades
+        cccorr: array-like
+            Cross-correlation matrix for price-changing trades
+        cncorr: array-like
+            Cross-correlation matrix for non-price-changing trades
+        nccorr: array-like
+            Cross-correlation matrix for non-price-changing trades
+        Sln: array-like
+            (incremental) price response for non-price-changing trades
+        Slc: array-like
+            (incremental) price response for price-changing trades
+        maxlag: int
+            Length of the kernels.
+    Returns:
+        tuple
+            The non-price-changing and price-changing kernels
+
     See also: calibrate_tim1, calibrate_hdim2
     """
     # incremental response
@@ -257,10 +334,9 @@ def tim2(s, c, G_n, G_c, sfunc=np.sign):
     Returns prices when integrated kernels are passed as arguments
     or returns for differential kernels.
     
-    Parameters:
-    ===========
-    s: array
-        Trade signs
+    Args:
+        s: array
+            Trade signs
     c: array
         Trade labels (1 = change; 0 = no change)
     G_n: array
@@ -269,7 +345,9 @@ def tim2(s, c, G_n, G_c, sfunc=np.sign):
         Kernel for price-changing trades
     sfunc: function [optional]
         Function to apply to signs. Default: np.sign.
-        
+    Returns:
+        array-like
+            The propagated signal
     See also: calibrate_tim2, tim1, hdim2.
     """
     assert c.dtype == bool, "c must be a boolean indicator!"
@@ -292,8 +370,7 @@ def calibrate_hdim2(
     orders. The argument names corresponds to the argument order in 
     spectral.x3corr.
     
-    Parameters:
-    ===========
+    Args:
     Cnnc: 2d-array-like
         Cross-covariance matrix for n-, n-, c- orders.
     Cccc: 2d-array-like
@@ -306,7 +383,9 @@ def calibrate_hdim2(
         (incremental) lagged price response for c-orders
     maxlag: int
         Length of the kernels.
-        
+    Returns:
+        tuple
+            The non-price-changing and price-changing kernels
     See also: hdim2,
     """
     maxlag = maxlag or min(len(Cccc), len(Sln))/2
@@ -338,11 +417,11 @@ def calibrate_hdim2(
     return gn, gc
     
 def hdim2(s, c, k_n, k_c, sfunc=np.sign):
-    """Simulate History Dependent Impact Model 2, return return.
+    """
+    Simulate History Dependent Impact Model 2, return return.
     
-    Parameters:
-    ===========
-    s: array
+    Args:
+        s: array
         Trade signs
     c: array
         Trade labels (1 = change; 0 = no change)
@@ -352,7 +431,9 @@ def hdim2(s, c, k_n, k_c, sfunc=np.sign):
         Differential kernel for price-changing trades
     sfunc: function [optional]
         Function to apply to signs. Default: np.sign.
-        
+    Returns:
+        array-like
+            The propagated signal
     See also: calibrate_hdim2, tim2, tim1.
     """
     assert c.dtype == bool, "c must be a boolean indicator!"
