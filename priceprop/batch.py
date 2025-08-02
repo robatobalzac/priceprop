@@ -87,6 +87,45 @@ def shift(x, n, val=np.nan):
             res[:n] = x[n:]
         return res
     
+
+def calibrate_tim2_day(r, eps, maxlag=180, norm='corr'):
+    """
+    High-level shortcut: given raw return series ``r`` and order-flow
+    series ``eps`` (same length), compute sparse PC/NPC streams, the six
+    full-lag correlations, and call :pyfunc:`propagator.calibrate_tim2`.
+
+    Args:
+        r: array-like
+            The return series
+        eps: array-like
+            The order-flow series
+        maxlag: int
+            The maximum lag to calculate the response of   
+        norm: str
+            The normalization to use
+    Returns:
+        tuple
+            A tuple with the results
+    """
+    import numpy as np, scorr
+    # PC/NPC masks  (price-changing = mid-price move with matching sign)
+    mask_pc  = (r != 0) & (np.sign(r) == np.sign(eps))
+    mask_npc = ~mask_pc
+    eps_pc_full  = np.where(mask_pc,  eps, 0.0)
+    eps_npc_full = np.where(mask_npc, eps, 0.0)
+
+    nncorr  = scorr.acorr(eps_npc_full, norm=norm)
+    cccorr  = scorr.acorr(eps_pc_full,  norm=norm)
+    cncorr  = scorr.xcorr(eps_pc_full,  eps_npc_full, norm=norm)
+    ncncorr = scorr.xcorr(eps_npc_full, eps_pc_full,  norm=norm)
+    Sln     = scorr.xcorr(r, eps_pc_full,  norm=norm)
+    Slc     = scorr.xcorr(r, eps_npc_full, norm=norm)
+
+    return propagator.calibrate_tim2(
+        nncorr, cccorr, cncorr, ncncorr, Sln, Slc, maxlag=maxlag
+    )
+
+
 # Analyse Trades
 # ============================================================================
 
