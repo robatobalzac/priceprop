@@ -9,12 +9,26 @@ from scorr import xcorr, xcorr_grouped_df, xcorrshift, fftcrop, corr_mat
 # =====================================================================
 
 def integrate(x):
-    "Return lag 1 sum, i.e. price from return, or an integrated kernel."
+    """
+    Return lag 1 sum, i.e. price from return, or an integrated kernel.
+    @param x: array-like
+        The signal to integrate
+    @return: array-like
+        The integrated signal
+    """
     return np.concatenate([[0], np.cumsum(x[:-1])])
     
     
 def smooth_tail_rbf(k, l0=3, tau=5, smooth=1, epsilon=1):
-    """Smooth tail of array k with radial basis functions"""
+    """
+    Smooth tail of array k with radial basis functions
+    @param k: array-like
+        The array to smooth
+    @param l0: int
+        The lag at which to start the interpolation
+    @param tau: int
+        The time constant for the exponential decay
+    """
     # interpolate in log-lags
     l = np.log(np.arange(l0,len(k)))
     # estimate functions
@@ -33,6 +47,13 @@ def smooth_tail_rbf(k, l0=3, tau=5, smooth=1, epsilon=1):
 def propagate(s, G, sfunc=np.sign):
     """Simulate propagator model from signs and one kernel.
     Equivalent to tim1, one of the kernels in tim2 or hdim2.
+    @param s: array-like
+        The signs to propagate
+    @param G: array-like
+        The kernel to propagate with
+    @param sfunc: function
+        The function to apply to the signs. Default: np.sign
+    @return: array-like
     """
     steps = len(s)
     s  = sfunc(s[:len(s)])
@@ -43,7 +64,17 @@ def propagate(s, G, sfunc=np.sign):
 # =====================================================================
 
 def _return_response(ret, x, maxlag):
-    """Helper for response and response_grouped_df."""
+    """
+    Helper for response and response_grouped_df.
+    @param ret: str
+        'l' for lags, 's' for differential response, 'r' for return response
+    @param x: array-like
+        The signal to calculate the response of
+    @param maxlag: int
+        The maximum lag to calculate the response of
+    @return: tuple
+    """
+    maxlag = int(maxlag)
     # return what?
     ret = ret.lower()
     res = []
@@ -75,21 +106,19 @@ def response(r, s, maxlag=10**4, ret='lsr', subtract_mean=False):
     
     Note that this commonly used price response is a simple cross correlation 
     and NOT equivalent to the linear response in systems analysis.
-    
-    Parameters:
-    ===========
-    
-    r: array-like
+    @param r: array-like
         Returns
-    s: array-like
+    @param s: array-like
         Order signs
-    maxlag: int
+    @param maxlag: int
         Longest lag to calculate
-    ret: str
+    @param ret: str
         can include 'l' to return lags, 'r' to return response, and
         's' to return differential response (in specified order).
-    subtract_mean: bool
+    @param subtract_mean: bool
         Subtract means first. Default: False (signal means already zero)
+    @return: tuple
+        The lag, differential response, and response
     """
     maxlag = min(maxlag, len(r) - 2)
     s  = s[:len(r)]
@@ -147,6 +176,10 @@ def beta_from_gamma(gamma):
         G(lag) = lag**-beta 
     that compensates a sign-autocorrelation 
         C(lag) = lag**-gamma.
+    @param gamma: float
+        The exponent of the sign-autocorrelation
+    @return: float
+        The exponent beta
     """
     return (1-gamma)/2.
     
