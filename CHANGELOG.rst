@@ -1,6 +1,6 @@
 Changelog
 =========
-:Version: 1.0.3 of 2025-08-02
+:Version: 2.0.0 of 2025-08-02
 
 Support for Python 3.8+
 Added calibrate_tim2_day function to batch.py

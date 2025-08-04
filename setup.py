@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='priceprop',
-    version='1.0.3',
+    version='2.0.0',
     description=(
         'Calibrate and simulate linear propagator models for the price '
         'impact of an extrinsic order flow.'
