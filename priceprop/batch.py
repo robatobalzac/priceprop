@@ -105,7 +105,7 @@ def calibrate_tim2_day(r, eps, maxlag=180, norm='corr'):
             The normalization to use
     Returns:
         tuple
-            A tuple with the results
+            The non-price-changing and price-changing kernels
     """
     import numpy as np, scorr
     # PC/NPC masks  (price-changing = mid-price move with matching sign)
@@ -121,12 +121,11 @@ def calibrate_tim2_day(r, eps, maxlag=180, norm='corr'):
     Sln     = scorr.xcorr(r, eps_pc_full,  norm=norm)
     Slc     = scorr.xcorr(r, eps_npc_full, norm=norm)
 
-    g, meta = prop.calibrate_tim2(
+    G_npc, G_pc = prop.calibrate_tim2(
         nncorr, cccorr, cncorr, ncncorr, Sln, Slc, maxlag=maxlag
     )
-    G_pc  = g[:maxlag]
-    G_npc = g[maxlag:]
-    return G_pc, G_npc, meta
+
+    return G_npc, G_pc
 
 
 # Analyse Trades
@@ -165,6 +164,18 @@ def calibrate_models(
     
     # apply intra-day mask
     tt = tt[mask0]
+    
+    # check if we have enough data after filtering
+    if len(tt) < 100:  # minimum data size for correlation analysis
+        raise ValueError(f"Insufficient data for calibration: {len(tt)} rows (minimum 100 required)")
+    
+    # check that all required columns have data
+    required_cols = ['change', 'sign', 'r1']
+    for col in required_cols:
+        if col not in tt.columns:
+            raise ValueError(f"Missing required column: {col}")
+        if tt[col].isnull().all():
+            raise ValueError(f"Column {col} contains only null values")
         
     # get same optimal nfft used by pna functions
     nfft_opt, events_required = scorr.get_nfft(nfft, tt.groupby('date')['r1'])
@@ -242,7 +253,7 @@ def calibrate_models(
         # triple cross correlations
         if 'hdim2' in models:
             res['ccccorr'] = scorr.x3corr_grouped_df(
-                tt, ['change', 'sc', 'sc'], nfft=nfft, **kwargs
+                tt, ['change', 'sc', 'sc'], nfft=nfft, pad=maxlag, **kwargs
             )[0]
             res['nnccorr'] = scorr.x3corr_grouped_df(
                 tt, ['change', 'sn', 'sn'], nfft=nfft, **kwargs
@@ -379,23 +390,27 @@ def calc_models(
 
     # get masks for different samples (groups of events, normally days)
     masks   = get_trade_split(tt, split_by)
-    samples = masks.keys()
+    samples = list(masks.keys())
     
     for i in range(len(samples)):
         # get calibration for a sample
         ## get a sample name and the corresponding mask
-        s = samples[i-1]
+        s = samples[i]
         m = masks[s]
         
         ## calculate now or rely on existing calibration?
         if calibrate:
-            cal = calibrate_models(
-                tt.loc[m], nfft=nfft, group=group, models=models
-            )
-            if 'cal' in dbc:
-                dbc['cal'][s] = cal
-            else:
-                dbc['cal'] = {s: cal}
+            try:
+                cal = calibrate_models(
+                    tt.loc[m], nfft=nfft, group=group, models=models
+                )
+                if 'cal' in dbc:
+                    dbc['cal'][s] = cal
+                else:
+                    dbc['cal'] = {s: cal}
+            except ValueError as e:
+                print(f"Warning: Skipping sample '{s}' due to insufficient data: {e}")
+                continue  # skip this sample and move to the next one
         else:
             cal = dbc['cal'][s]
         
